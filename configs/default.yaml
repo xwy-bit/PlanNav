@@ -2,8 +2,14 @@ name: 'default'
 author: 'Xu wayen'
 output_path : 'DATE_TIME'
 seed: 1958
-max_moves: 100
 training_steps: 2
 
-# User Define parameters
+# navigation config
 habitat_config_path: 'configs/habitat_default.yaml'
+
+max_moves: 100
+success_distance: 1.0
+use_office_reward: True
+
+# backbone
+preprocess_model: 'resnet34'

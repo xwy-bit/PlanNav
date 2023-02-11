@@ -16,6 +16,9 @@ _C.max_moves = 1000
 _C.success_distance = 1.0
 _C.use_office_reward = True
 
+# backbone
+_C.preprocess_model = 'resnet34'
+
 # merge from files
 _C.defrost()
 _C.merge_from_file('configs/default.yaml')
