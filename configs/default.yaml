@@ -1,0 +1,9 @@
+name: 'default'
+author: 'Xu wayen'
+output_path : 'DATE_TIME'
+seed: 1958
+max_moves: 100
+training_steps: 2
+
+# User Define parameters
+habitat_config_path: 'configs/habitat_default.yaml'
