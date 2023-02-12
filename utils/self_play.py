@@ -40,6 +40,7 @@ class GameHistory:
         self.observations_history = {'rgb':[] , 'depth':[]} # for multimodality observations
         self.actions_history = []
         self.rewards_history = []
+        self.infos_history = []
         self.scene_name = ''
         self.len = 0
     def get_observations(self,kind = 'rgb',index = -1, stacked_num = 1):
@@ -162,7 +163,8 @@ class SelfPlay:
         game_history.actions_history.append(4)
         game_history.observations_history['rgb'].append(observation['rgb'])
         game_history.observations_history['rgb'].append(observation['depth'])
-        game_history.rewards_history.append(0)
+        game_history.rewards_history.append(reward)
+        game_history.infos_history.append(info)
         
         
         # TODO get scene name
