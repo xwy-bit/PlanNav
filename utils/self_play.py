@@ -171,7 +171,7 @@ class SelfPlay:
         while not done and info['num_steps'] < self.config.max_moves:
             
             # TODO get actions
-            action = 3
+            action = 1
             
             observation , reward , done , info = self.Game.step(action)
             

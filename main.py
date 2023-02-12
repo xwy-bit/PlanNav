@@ -8,3 +8,5 @@ shared_storage = SharedStorage(config)
 replay_buffer = ReplayBuffer(config)
 
 self_play_worker.continuous_self_play(shared_storage,replay_buffer)
+
+breakpoint()

@@ -13,6 +13,7 @@ class HabitatGame:
         self.config = common_config
         self.env = habitat.Env(self.habitat_config)
         observations = self.env.reset() # first observation 
+        self.sim = self.env._sim
         
     def reset(self):
         observations = self.env.reset()
@@ -39,7 +40,7 @@ class HabitatGame:
             done = False
         
         done = done or self.env.episode_over
-        
+        collision = self.sim.previous_step_collided        
         
         # use office reward or not    
         if self.config.use_office_reward:
@@ -50,6 +51,7 @@ class HabitatGame:
             reward = 0.0
             
         info = metrics
+        info['collision'] = collision
         
         
         return observations ,reward , done, info 
