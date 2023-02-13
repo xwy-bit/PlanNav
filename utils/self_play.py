@@ -73,17 +73,6 @@ class GameHistory:
             else:
                 raise TypeError
 
-    # @property
-    # def len(self):
-    #     length = np.shape(self.actions_history)[0]
-        
-    #     # navigation specialization
-    #     if self.observations_history.__contains__('rgb'):
-    #         assert length == np.shape(self.actions_history['rgb'])[0]
-    #     if self.observations_history.__contains__('depth'):
-    #         assert length == np.shape(self.actions_history['depth'])[0]
-            
-    #     return length
                    
       
 class ReplayBuffer:
@@ -115,10 +104,8 @@ class ReplayBuffer:
     
     def sample_games(self,game_num):
         game_ids = []
-        games = []
         for game_id, game_history in self.buffer.items():
-            game_ids.append(game_id)
-            games.append(game_history.game_priority) 
+            game_ids.append(game_id) 
                    
         selected_game_ids = np.random.choice(
             list(self.game_buffer.keys())
@@ -183,6 +170,7 @@ class SelfPlay:
             game_history.observations_history['rgb'].append(observation['rgb'])
             game_history.observations_history['rgb'].append(observation['depth'])
             game_history.rewards_history.append(reward)
+            game_history.infos_history.append(info)
             game_history.len = info['num_steps']
             
         return game_history

@@ -10,6 +10,23 @@ habitat_config_path: 'configs/habitat_default.yaml'
 max_moves: 100
 success_distance: 1.0
 use_office_reward: True
+discount_rate: 0.98
 
 # backbone
 preprocess_model: 'resnet34'
+
+# normal model-based learning 
+normal_mbase:
+  envnet_layer_num: [3,4,5,6]
+  policynet_layer_num: [4,5,5,6]
+
+  envnet_train_epochs: 50
+  policynet_train_epochs: 50
+
+  envnet_train_sample_num: 5
+  envnet_train_batchsize: 20
+
+  envnet_train_lr: 0.1
+  envnet_train_momentun: 0.9
+
+  policy_train_lr: 0.1

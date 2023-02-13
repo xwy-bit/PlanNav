@@ -37,7 +37,7 @@ class PreProcess:
         else:
             raise TypeError('No Such Model')
     def trans(self,image):
-        return self.transform(image).unsqueeze(0).cuda()
+        return self.transform(image).cuda()
     def go(self,images):
         transformed_images = self.trans(images).cuda()
         return self.model(transformed_images)

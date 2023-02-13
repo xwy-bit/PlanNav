@@ -11,6 +11,7 @@ pre_process = PreProcess('resnet50')
 
 test_img = cv2.imread('test/asset/test_img00.png')
 test_img = torch.Tensor(test_img).permute(2, 0, 1) # To [C , H , W]
+test_img = torch.stack([test_img] * 250,0)
 
 print(test_img.shape)
 
