@@ -129,20 +129,20 @@ class SelfPlay:
         
         # model 
         
-    def continuous_self_play(self,shared_storage,replay_buffer,test_mode=False):
-        shared_storage.set_info('training_step' , 0)
-        while shared_storage.get_info('training_step')  <  self.config.training_steps :
+    def continuous_self_play(self,shared_storage,replay_buffer,model,test_mode=False):
+        shared_storage.set_info('play_step' , 0)
+        while shared_storage.get_info('play_step')  <  self.config.play_steps :
             
             # TODO add model
             
             if not test_mode:
-                game_history = self.play_game()
+                game_history = self.play_game(model)
 
                 replay_buffer.save_game(game_history,shared_storage)
-                shared_storage.set_info('training_step',shared_storage.get_info('training_step') + 1)
+                shared_storage.set_info('play_step',shared_storage.get_info('play_step') + 1)
         self.close_game()            
             
-    def play_game(self):
+    def play_game(self,model):
         
         # initialize game history
         game_history = GameHistory()
@@ -160,7 +160,7 @@ class SelfPlay:
         while not done and info['num_steps'] < self.config.max_moves:
             
             # TODO get actions
-            action = 1
+            action = model.take_action(torch.Tensor(observation['rgb']))
             
             observation , reward , done , info = self.Game.step(action)
             

@@ -2,7 +2,7 @@ name: 'default'
 author: 'Xu wayen'
 output_path : 'DATE_TIME'
 seed: 1958
-training_steps: 2
+play_steps: 2
 
 # navigation config
 habitat_config_path: 'configs/habitat_default.yaml'
@@ -17,16 +17,22 @@ preprocess_model: 'resnet34'
 
 # normal model-based learning 
 normal_mbase:
-  envnet_layer_num: [3,4,5,6]
-  policynet_layer_num: [4,5,5,6]
+  envnet_layer_num: [512,4,5,6,512]
+  policynet_layer_num: [512,5,5,6,3]
+  valuenet_layer_num: [512,6,7,8,1]
 
   envnet_train_epochs: 50
   policynet_train_epochs: 50
 
   envnet_train_sample_num: 5
   envnet_train_batchsize: 20
-
+  policynet_train_sample_num: 5
+  policy_train_batchsize: 20
+  
   envnet_train_lr: 0.1
   envnet_train_momentun: 0.9
 
   policy_train_lr: 0.1
+
+  envpolicy_train_epoches: 20
+  policy_train_epoches: 20
