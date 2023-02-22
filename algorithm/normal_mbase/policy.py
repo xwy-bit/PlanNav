@@ -5,35 +5,40 @@ import torch
 import torch.nn as NN
 import numpy as np
 class policy:
-    def __init__(self,config) -> None:
-        self.EnvNet = EnvNet(config)
-        self.agent = ActorCritic(config)
-        self.config = config.normal_mbase
+    def __init__(self,config,writer) -> None:
+        self.writer = writer
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.EnvNet = EnvNet(config,self.writer).to(self.device)
+        self.agent = ActorCritic(config,self.writer)
+        self.orig_config = config
+        self.config = config.normal_mbase # special config for model-based AC
         self.backbone = PreProcess('resnet34')
         self.env_lossfun = NN.SmoothL1Loss()
-        self.self_play = SelfPlay(config)
+        self.self_play = SelfPlay(config,self.writer)
 
     def train_env(self,config,replay_buffer,shared_storage):
         while shared_storage.get_info('env_train_epoch') < self.config.envnet_train_epochs:
             sampled_games = replay_buffer.sample_games(
                 self.config.envnet_train_sample_num)
-            
-            select_indexes = np.random.randint(1,config.max_moves,
+            select_indexes = np.random.randint(1,config.play_steps,
                 (self.config.envnet_train_sample_num,
-                    self.config.env_train_batchsize/self.config.envnet_train_sample_num))
+                    int(self.config.env_train_batchsize/self.config.envnet_train_sample_num)))
             
             # get batch via random choice
-            # TODO : check size of batch 
-            actions_batch = torch.Tensor([sampled_games[ii].actions_history[jj] 
+            # TODO : check size of batch
+
+            actions_batch = torch.tensor([sampled_games[ii][1].actions_history[jj] 
                 for ii in range(self.config.envnet_train_sample_num)
-                    for jj in select_indexes[ii] ])
-            actions_batch = NN.functional.one_hot(actions_batch,num_classes = 3)
-            last_states_batch = torch.Tensor([sampled_games[ii].observations_history['rgb'][jj-1]
+                    for jj in select_indexes[ii] ]).to(dtype =torch.int64,device = self.device)
+
+            actions_batch = NN.functional.one_hot(actions_batch,num_classes = 4)
+            
+            last_states_batch = torch.tensor(np.array([sampled_games[ii][1].observations_history['rgb'][jj-1]
                 for ii in range(self.config.envnet_train_sample_num)
-                    for jj in select_indexes[ii]])
-            current_states_batch = torch.Tensor([sampled_games[ii].observations_history['rgb'][jj]
+                    for jj in select_indexes[ii]])).to(dtype =torch.float32,device = self.device)
+            current_states_batch = torch.tensor(np.array([sampled_games[ii][1].observations_history['rgb'][jj]
                 for ii in range(self.config.envnet_train_sample_num)
-                    for jj in select_indexes[ii]])
+                    for jj in select_indexes[ii]])).to(dtype =torch.float32,device = self.device)
             
             # get feature of state images
             last_states_batch = self.backbone.go(last_states_batch)
@@ -47,31 +52,35 @@ class policy:
     def train_policy(self,config,replay_buffer,shared_storage):
         while shared_storage.get_info('policy_train_epoch') < self.config.policynet_train_epochs:
             sampled_games = replay_buffer.sample_games(
-                self.config.policynet_train_sample_num)
-
-            select_indexes = np.random.randint(1,config.max_moves,
-                (self.config.policynet_train_sample_num,
-                    self.config.policy_train_batchsize/self.config.policynet_train_sample_num))
+                self.config.envnet_train_sample_num)
+            select_indexes = np.random.randint(1,config.play_steps,
+                (self.config.envnet_train_sample_num,
+                    int(self.config.env_train_batchsize/self.config.envnet_train_sample_num)))
             
             # get batch via random choice
-            # TODO : check size of batch 
-            actions_batch = torch.Tensor([sampled_games[ii].actions_history[jj] 
-                for ii in range(self.config.policynet_train_sample_num)
-                    for jj in select_indexes[ii] ])
-            actions_batch = NN.functional.one_hot(actions_batch,num_classes = 3)
+            # TODO : check size of batch
 
-            last_states_batch = torch.Tensor([sampled_games[ii].observations_history['rgb'][jj-1]
-                for ii in range(self.config.policynet_train_sample_num)
-                    for jj in select_indexes[ii]])
-            current_states_batch = torch.Tensor([sampled_games[ii].observations_history['rgb'][jj]
-                for ii in range(self.config.policynet_train_sample_num)
-                    for jj in select_indexes[ii]])
+            actions_batch = torch.tensor([sampled_games[ii][1].actions_history[jj] 
+                for ii in range(self.config.envnet_train_sample_num)
+                    for jj in select_indexes[ii] ]).to(dtype =torch.int64,device = self.device)
+
+            actions_batch = NN.functional.one_hot(actions_batch,num_classes = 4)
             
-            reward_batch = torch.Tensor([sampled_games[ii].reward_history[jj]
+            last_states_batch = torch.tensor(np.array([sampled_games[ii][1].observations_history['rgb'][jj-1]
+                for ii in range(self.config.envnet_train_sample_num)
+                    for jj in select_indexes[ii]])).to(dtype =torch.float32,device = self.device)
+            current_states_batch = torch.tensor(np.array([sampled_games[ii][1].observations_history['rgb'][jj]
+                for ii in range(self.config.envnet_train_sample_num)
+                    for jj in select_indexes[ii]])).to(dtype =torch.float32,device = self.device)
+            
+            # get feature of state images
+            last_states_batch = self.backbone.go(last_states_batch)
+            current_states_batch = self.backbone.go(current_states_batch)            
+            rewards_batch = torch.tensor([sampled_games[ii][1].rewards_history[jj]
                 for ii in range(self.config.policynet_train_sample_num)
-                    for jj in select_indexes[ii]])
+                    for jj in select_indexes[ii]]).reshape([-1,1]).to(dtype =torch.float32,device = self.device)
 
-            self.agent.update((current_states_batch,actions_batch,reward_batch,last_states_batch))
+            self.agent.update((current_states_batch,actions_batch,rewards_batch,last_states_batch))
     
     def train(self,replay_buffer,shared_storage):
         self.self_play.continuous_self_play(shared_storage,replay_buffer,self.agent)
@@ -83,9 +92,10 @@ class policy:
             
             # train environment 
             while shared_storage.get_info('env_train_epoch') < self.config.env_train_epoches:
-                self.train_env(replay_buffer,shared_storage)
+                self.train_env(self.orig_config,replay_buffer,shared_storage)
                 shared_storage.set_info('env_train_epoch' 
                     ,shared_storage.get_info('env_train_epoch') + 1)
+                print('train env')
 
             # collect new game history
             self.self_play.continuous_self_play(shared_storage,replay_buffer,self.agent)
@@ -93,9 +103,10 @@ class policy:
             # train policy
             shared_storage.set_info('policy_train_epoch' , 0)
             while shared_storage.get_info('policy_train_epoch') < self.config.policy_train_epoches:
-                self.train_policy(replay_buffer,shared_storage)
+                self.train_policy(self.orig_config,replay_buffer,shared_storage)
                 shared_storage.set_info('policy_train_epoch'
                     ,shared_storage.get_info('policy_train_epoch') + 1)
+                print('train policy')
             
             shared_storage.set_info('envpolicy_train_epoch' 
                 ,shared_storage.get_info('envpolicy_train_epoch') + 1)

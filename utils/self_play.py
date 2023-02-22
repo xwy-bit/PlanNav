@@ -3,6 +3,8 @@ import copy
 import numpy as np
 from common.games import HabitatGame
 import habitat
+from models.preprocess import PreProcess
+from torch.utils.tensorboard import SummaryWriter
 
 class SharedStorage:
     '''
@@ -11,6 +13,7 @@ class SharedStorage:
     def __init__(self,config,checkpoint = {}) -> None:
         self.config = config
         self.current_checkpoint = copy.deepcopy(checkpoint)
+        self.set_info('num_played_games',0)
     def save_checkpoint(self,path = None):
         if not path:
             path = self.config.output_path + '/model.checkpoint'
@@ -104,7 +107,7 @@ class ReplayBuffer:
     
     def sample_games(self,game_num):
         game_ids = []
-        for game_id, game_history in self.buffer.items():
+        for game_id, game_history in self.game_buffer.items():
             game_ids.append(game_id) 
                    
         selected_game_ids = np.random.choice(
@@ -119,15 +122,18 @@ class ReplayBuffer:
         
         
 class SelfPlay:
-    def __init__(self,config) -> None:
+    def __init__(self,config,writer) -> None:
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.config = config
         self.Game = HabitatGame(config)
+        self.writer = writer
 
         # FIx random seed
         np.random.seed(config.seed)
         torch.manual_seed(config.seed)
         
         # model 
+        self.backbone = PreProcess('resnet34')
         
     def continuous_self_play(self,shared_storage,replay_buffer,model,test_mode=False):
         shared_storage.set_info('play_step' , 0)
@@ -137,10 +143,15 @@ class SelfPlay:
             
             if not test_mode:
                 game_history = self.play_game(model)
+                shared_storage.set_info('num_played_games',
+                    shared_storage.get_info('num_played_games') + 1)
+                self.writer.add_scalar('Distance2Goal', 
+                    game_history.infos_history[-1]['distance_to_goal'],
+                        shared_storage.get_info('num_played_games'))
 
                 replay_buffer.save_game(game_history,shared_storage)
                 shared_storage.set_info('play_step',shared_storage.get_info('play_step') + 1)
-        self.close_game()            
+                    
             
     def play_game(self,model):
         
@@ -149,10 +160,10 @@ class SelfPlay:
         observation , reward , done , info = self.Game.reset()
         game_history.actions_history.append(4)
         game_history.observations_history['rgb'].append(observation['rgb'])
-        game_history.observations_history['rgb'].append(observation['depth'])
+        game_history.observations_history['depth'].append(observation['depth'])
         game_history.rewards_history.append(reward)
         game_history.infos_history.append(info)
-        
+        done = False
         
         # TODO get scene name
         game_history.scene_name = info['scene_name']
@@ -160,7 +171,9 @@ class SelfPlay:
         while not done and info['num_steps'] < self.config.max_moves:
             
             # TODO get actions
-            action = model.take_action(torch.Tensor(observation['rgb']))
+            rgb_observation = torch.Tensor(observation['rgb']).to(self.device)
+            observation_feature = self.backbone.go(rgb_observation)
+            action = model.take_action(observation_feature)
             
             observation , reward , done , info = self.Game.step(action)
             
@@ -168,10 +181,11 @@ class SelfPlay:
             # add game history
             game_history.actions_history.append(action)
             game_history.observations_history['rgb'].append(observation['rgb'])
-            game_history.observations_history['rgb'].append(observation['depth'])
+            game_history.observations_history['depth'].append(observation['depth'])
             game_history.rewards_history.append(reward)
             game_history.infos_history.append(info)
             game_history.len = info['num_steps']
+
             
         return game_history
     def close_game(self):

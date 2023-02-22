@@ -38,6 +38,8 @@ _D.envnet_train_momentun = 0.9
 _D.policy_train_lr = 0.9
 _D.envpolicy_train_epoches = 1
 _D.policy_train_epoches = 1
+_D.env_train_epoches = 1
+_D.env_train_batchsize = 1
 
 
 # merge from files

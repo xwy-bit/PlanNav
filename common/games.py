@@ -52,8 +52,13 @@ class HabitatGame:
             
         info = metrics
         info['collision'] = collision
+        if collision:
+            reward = reward - 1
+        if action != 1:
+            reward = reward - 0.5
         
-        
+        # debug
+        print(info)
         return observations ,reward , done, info 
     
     def close(self):
