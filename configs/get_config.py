@@ -20,6 +20,8 @@ _C.discount_rate = 0.98
 # backbone
 _C.preprocess_model = 'resnet34'
 
+##############################################
+#           DEFAULT                          #
 # model-based AC
 _C.normal_mbase = CN()
 
@@ -41,10 +43,18 @@ _D.policy_train_epoches = 1
 _D.env_train_epoches = 1
 _D.env_train_batchsize = 1
 
+##############################################
+#         RL_MAP                             #
+_C.vision_range = 100
+_C.map_resolution = 0.05
+_C.max_height = 1.5
+_C.min_height = 0.1
+_C.du_scale = 1.0
+_C.grid_num  = 600 # N , the grid will be like N * N 
 
 # merge from files
 _C.defrost()
-_C.merge_from_file('configs/default.yaml')
+_C.merge_from_file('configs/rl_map.yaml')
 
 if _C.output_path == 'DATE_TIME':
     _C.output_path = datetime.now().strftime("%Y%m%d_%H-%M%S")

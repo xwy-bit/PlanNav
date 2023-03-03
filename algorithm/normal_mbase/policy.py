@@ -48,8 +48,9 @@ class policy:
             shared_storage.set_info(
                 'env_train_epoch',shared_storage.get_info('env_train_epoch') + 1)
                 
-    
+     
     def train_policy(self,config,replay_buffer,shared_storage):
+        shared_storage.set_info('policy_train_epoch', 0)
         while shared_storage.get_info('policy_train_epoch') < self.config.policynet_train_epochs:
             sampled_games = replay_buffer.sample_games(
                 self.config.envnet_train_sample_num)
@@ -59,7 +60,9 @@ class policy:
             
             # get batch via random choice
             # TODO : check size of batch
-
+            # print(select_indexes)
+            # if (select_indexes == [[1,6,7],[6,7 ,1], [1 ,5, 6], [4 ,2, 3], [2 ,2, 9], [2 ,6 ,8], [6 ,4 ,7],[4, 3, 4], [9 ,5 ,6],[5 ,9 ,8]]).all():
+            #     breakpoint()
             actions_batch = torch.tensor([sampled_games[ii][1].actions_history[jj] 
                 for ii in range(self.config.envnet_train_sample_num)
                     for jj in select_indexes[ii] ]).to(dtype =torch.int64,device = self.device)
@@ -81,6 +84,9 @@ class policy:
                     for jj in select_indexes[ii]]).reshape([-1,1]).to(dtype =torch.float32,device = self.device)
 
             self.agent.update((current_states_batch,actions_batch,rewards_batch,last_states_batch))
+            shared_storage.set_info('policy_train_epoch',
+                shared_storage.get_info('policy_train_epoch') + 1)
+            print(shared_storage.get_info('policy_train_epoch'))
     
     def train(self,replay_buffer,shared_storage):
         self.self_play.continuous_self_play(shared_storage,replay_buffer,self.agent)
@@ -91,22 +97,14 @@ class policy:
             shared_storage.set_info('env_train_epoch' , 0)
             
             # train environment 
-            while shared_storage.get_info('env_train_epoch') < self.config.env_train_epoches:
-                self.train_env(self.orig_config,replay_buffer,shared_storage)
-                shared_storage.set_info('env_train_epoch' 
-                    ,shared_storage.get_info('env_train_epoch') + 1)
-                print('train env')
+            self.train_env(self.orig_config,replay_buffer,shared_storage)
+
 
             # collect new game history
             self.self_play.continuous_self_play(shared_storage,replay_buffer,self.agent)
             
             # train policy
-            shared_storage.set_info('policy_train_epoch' , 0)
-            while shared_storage.get_info('policy_train_epoch') < self.config.policy_train_epoches:
-                self.train_policy(self.orig_config,replay_buffer,shared_storage)
-                shared_storage.set_info('policy_train_epoch'
-                    ,shared_storage.get_info('policy_train_epoch') + 1)
-                print('train policy')
+            self.train_policy(self.orig_config,replay_buffer,shared_storage)
             
             shared_storage.set_info('envpolicy_train_epoch' 
                 ,shared_storage.get_info('envpolicy_train_epoch') + 1)

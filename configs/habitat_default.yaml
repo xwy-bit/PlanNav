@@ -11,11 +11,12 @@ defaults:
     - spl
     - distance_to_goal_reward
     - num_steps
+    - top_down_map
     
 
 habitat:
   environment:
-    max_episode_steps: 100
+    max_episode_steps: 1000
   simulator:
     agents:
       main_agent:

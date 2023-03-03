@@ -3,7 +3,11 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+from argparse import Namespace
 import habitat
+import numpy as np
+from scipy.spatial.transform import Rotation as R
+
 from configs.get_config import _C as config
 
 class HabitatGame:
@@ -56,18 +60,46 @@ class HabitatGame:
             reward = reward - 1
         if action != 1:
             reward = reward - 0.5
-        
-        # debug
-        print(info)
+        # don't stop
+        done = False
         return observations ,reward , done, info 
     
     def close(self):
         self.env.close()
 
+    def get_parameters(self):
+        position = self.sim.get_agent_state().position
+        rotation_quaternion = self.sim.get_agent_state().rotation
+        rotation_quaternion = np.array([rotation_quaternion.w
+                                ,rotation_quaternion.x
+                                ,rotation_quaternion.y
+                                ,rotation_quaternion.z])
+        object_rotation_matrix = R.from_quat(rotation_quaternion).as_matrix()
+        y_rotation_angle  = -np.arctan2(object_rotation_matrix[0, 2], object_rotation_matrix[2, 2])
+        current_pose = np.array([position[0],position[1],y_rotation_angle])
+        depth_class = self.sim.sensor_suite.sensors['depth'].config
+        rgb_class = self.sim.sensor_suite.sensors['rgb'].config
+        param = {'dsensor_height':depth_class.position[1]
+            ,'min_depth':depth_class.min_depth
+            ,'max_depth':depth_class.max_depth
+            ,'depth_hfov': depth_class.hfov
+            ,'dframe_height':depth_class.height
+            ,'dframe_width':depth_class.width
+            ,'rframe_height':rgb_class.height
+            ,'rframe_width':rgb_class.width
+            ,'rsensor_height':rgb_class.position[1]
+            ,'rgb_hfov':rgb_class.hfov
+            ,'agent_rotation_quaternion':rotation_quaternion
+            ,'agent_rotation_y':y_rotation_angle
+            ,'current_pose':current_pose}
+        param = Namespace(**param)
+        return param
 if __name__ == '__main__':
-    Env = HabitatGame('configs/habitat_default.yaml')
+    from configs.get_config import _C as config
+    Env = HabitatGame(config)
     observations = Env.reset()
     for ii in range(3):
-        observations = Env.step(2)
-        print(list(observations[0].keys()))
+        observations = Env.step(3)
+        param = Env.get_parameters()
+        print(param.agent_position)
     print('finish test')
